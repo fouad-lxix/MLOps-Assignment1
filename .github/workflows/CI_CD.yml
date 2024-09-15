@@ -1,0 +1,97 @@
+name: CI/CD Pipeline
+
+# Ensure the workflow has write permissions
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - dev
+      - test
+      - prod
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+    
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Lint Code (Flake8)
+      run: |
+        pip install flake8
+        flake8 .
+
+  push_to_stage:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/dev'
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Configure Git with PAT
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
+      
+    
+    - name: Push to Stage Branch
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        git checkout test || git checkout -b test
+        git merge dev
+        git push origin test
+
+
+  push_to_prod:
+    runs-on: ubuntu-latest
+    needs: push_to_stage
+    if: github.ref == 'refs/heads/test'
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Configure Git with PAT
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
+        
+    - name: Push to Prod Branch
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      run: |
+        git checkout prod || git checkout -b prod
+        git merge origin/test
+        git push origin prod
+
+
+  deploy_prod:
+    runs-on: ubuntu-latest
+    needs: push_to_prod
+    if: github.ref == 'refs/heads/prod'
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - name: Deploy to Vercel (Production)
+      run: npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --env FLASK_ENV=production
