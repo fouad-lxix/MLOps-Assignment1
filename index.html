@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Prediction App</h1>
+        <form id="prediction-form">
+            <div class="form-group">
+                <input type="text" id="longitude" placeholder="Longitude" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="latitude" placeholder="Latitude" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="housing_median_age" placeholder="Housing Median Age" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="total_rooms" placeholder="Total Rooms" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="total_bedrooms" placeholder="Total Bedrooms" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="population" placeholder="Population" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="households" placeholder="Households" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="median_income" placeholder="Median Income" required>
+            </div>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const data = {
+                longitude: parseFloat(document.getElementById('longitude').value),
+                latitude: parseFloat(document.getElementById('latitude').value),
+                housing_median_age: parseFloat(document.getElementById('housing_median_age').value),
+                total_rooms: parseFloat(document.getElementById('total_rooms').value),
+                total_bedrooms: parseFloat(document.getElementById('total_bedrooms').value),
+                population: parseFloat(document.getElementById('population').value),
+                households: parseFloat(document.getElementById('households').value),
+                median_income: parseFloat(document.getElementById('median_income').value)
+            };
+
+            fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    const formatter = new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                    });
+                    document.getElementById('result').innerText = 'Prediction: ' + formatter.format(result.prediction);
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+
+</html>
